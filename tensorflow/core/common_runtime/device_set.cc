@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -50,33 +50,38 @@ Device* DeviceSet::FindDeviceByName(const string& name) const {
   return gtl::FindPtrOrNull(device_by_name_, name);
 }
 
-// Higher result implies lower priority.
-static int Order(const DeviceType& d) {
+// static
+int DeviceSet::DeviceTypeOrder(const DeviceType& d) {
   if (StringPiece(d.type()) == DEVICE_CPU) {
     return 3;
-  } else if (StringPiece(d.type()) == DEVICE_GPU) {
+  } else if (StringPiece(d.type()) == DEVICE_GPU ||
+             StringPiece(d.type()) == DEVICE_SYCL) {
     return 2;
   } else {
-    return 1;
+    // Non-CPU/GPU devices are never prioritized over CPU and GPU, and
+    // must be explicitly selected.  This is to prevent surprising
+    // placements that cause a lot of cross-device communication
+    // between the host CPU device and other devices.
+    return 10;
   }
 }
 
-static bool ByPriority(const DeviceType& a, const DeviceType& b) {
+static bool DeviceTypeComparator(const DeviceType& a, const DeviceType& b) {
   // Order by "order number"; break ties lexicographically.
-  return std::make_pair(Order(a), StringPiece(a.type())) <
-         std::make_pair(Order(b), StringPiece(b.type()));
+  return std::make_pair(DeviceSet::DeviceTypeOrder(a), StringPiece(a.type())) <
+         std::make_pair(DeviceSet::DeviceTypeOrder(b), StringPiece(b.type()));
 }
 
 std::vector<DeviceType> DeviceSet::PrioritizedDeviceTypeList() const {
   std::vector<DeviceType> result;
   std::set<string> seen;
   for (Device* d : devices_) {
-    auto t = d->device_type();
+    const auto& t = d->device_type();
     if (seen.insert(t).second) {
-      result.emplace_back(DeviceType(t));
+      result.emplace_back(t);
     }
   }
-  std::sort(result.begin(), result.end(), ByPriority);
+  std::sort(result.begin(), result.end(), DeviceTypeComparator);
   return result;
 }
 

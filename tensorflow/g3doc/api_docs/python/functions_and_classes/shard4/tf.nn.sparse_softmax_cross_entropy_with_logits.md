@@ -1,4 +1,4 @@
-### `tf.nn.sparse_softmax_cross_entropy_with_logits(logits, labels, name=None)` {#sparse_softmax_cross_entropy_with_logits}
+### `tf.nn.sparse_softmax_cross_entropy_with_logits(_sentinel=None, labels=None, logits=None, name=None)` {#sparse_softmax_cross_entropy_with_logits}
 
 Computes sparse softmax cross entropy between `logits` and `labels`.
 
@@ -18,21 +18,33 @@ a probability distribution for each entry, see
 on `logits` internally for efficiency.  Do not call this op with the
 output of `softmax`, as it will produce incorrect results.
 
-`logits` must have the shape `[batch_size, num_classes]`
-and dtype `float32` or `float64`.
+A common use case is to have logits of shape `[batch_size, num_classes]` and
+labels of shape `[batch_size]`. But higher dimensions are supported.
 
-`labels` must have the shape `[batch_size]` and dtype `int32` or `int64`.
+**Note that to avoid confusion, it is required to pass only named arguments to
+this function.**
 
 ##### Args:
 
+  _sentinel: Used to prevent positional parameters. Internal, do not use.
 
-*  <b>`logits`</b>: Unscaled log probabilities.
-*  <b>`labels`</b>: Each entry `labels[i]` must be an index in `[0, num_classes)`. Other
-    values will result in a loss of 0, but incorrect gradient computations.
+*  <b>`labels`</b>: `Tensor` of shape `[d_0, d_1, ..., d_{r-2}]` and dtype `int32` or
+    `int64`. Each entry in `labels` must be an index in `[0, num_classes)`.
+    Other values will raise an exception when this op is run on CPU, and
+    return `NaN` for corresponding corresponding loss and gradient rows
+    on GPU.
+*  <b>`logits`</b>: Unscaled log probabilities of rank `r` and shape
+    `[d_0, d_1, ..., d_{r-2}, num_classes]` and dtype `float32` or `float64`.
 *  <b>`name`</b>: A name for the operation (optional).
 
 ##### Returns:
 
-  A 1-D `Tensor` of length `batch_size` of the same type as `logits` with the
-  softmax cross entropy loss.
+  A `Tensor` of the same shape as `labels` and of the same type as `logits`
+  with the softmax cross entropy loss.
+
+##### Raises:
+
+
+*  <b>`ValueError`</b>: If logits are scalars (need to have rank >= 1) or if the rank
+    of the labels is not equal to the rank of the labels minus one.
 

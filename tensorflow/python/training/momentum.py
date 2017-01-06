@@ -1,4 +1,4 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 from tensorflow.python.framework import ops
-from tensorflow.python.ops import constant_op
 from tensorflow.python.ops import math_ops
 from tensorflow.python.training import optimizer
 from tensorflow.python.training import training_ops
@@ -32,7 +31,7 @@ class MomentumOptimizer(optimizer.Optimizer):
   """
 
   def __init__(self, learning_rate, momentum,
-               use_locking=False, name="Momentum"):
+               use_locking=False, name="Momentum", use_nesterov=False):
     """Construct a new Momentum optimizer.
 
     Args:
@@ -41,10 +40,15 @@ class MomentumOptimizer(optimizer.Optimizer):
       use_locking: If `True` use locks for update operations.
       name: Optional name prefix for the operations created when applying
         gradients.  Defaults to "Momentum".
+      use_nesterov: If `True` use Nesterov Momentum.
+        See [Sutskever et. al., 2013](
+        http://jmlr.org/proceedings/papers/v28/sutskever13.pdf)
+
     """
     super(MomentumOptimizer, self).__init__(use_locking, name)
     self._learning_rate = learning_rate
     self._momentum = momentum
+    self._use_nesterov = use_nesterov
 
   def _create_slots(self, var_list):
     for v in var_list:
@@ -63,7 +67,8 @@ class MomentumOptimizer(optimizer.Optimizer):
         math_ops.cast(self._learning_rate_tensor, var.dtype.base_dtype),
         grad,
         math_ops.cast(self._momentum_tensor, var.dtype.base_dtype),
-        use_locking=self._use_locking).op
+        use_locking=self._use_locking,
+        use_nesterov=self._use_nesterov).op
 
   def _apply_sparse(self, grad, var):
     mom = self.get_slot(var, "momentum")
@@ -72,4 +77,5 @@ class MomentumOptimizer(optimizer.Optimizer):
         math_ops.cast(self._learning_rate_tensor, var.dtype.base_dtype),
         grad.values, grad.indices,
         math_ops.cast(self._momentum_tensor, var.dtype.base_dtype),
-        use_locking=self._use_locking).op
+        use_locking=self._use_locking,
+        use_nesterov=self._use_nesterov).op

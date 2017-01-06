@@ -20,7 +20,11 @@ py_library(
         "system_info_lib.py",
     ],
     srcs_version = "PY2AND3",
-    deps = ["//tensorflow:tensorflow_py"],
+    deps = [
+        "//tensorflow/python:client",
+        "//tensorflow/python:errors",
+        "//tensorflow/python:platform",
+    ],
 )
 
 py_binary(
@@ -29,7 +33,7 @@ py_binary(
     srcs_version = "PY2AND3",
     deps = [
         ":system_info_lib",
-        "//tensorflow:tensorflow_py",
+        "//tensorflow/python:platform",
     ],
 )
 
@@ -41,7 +45,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         ":system_info_lib",
-        "//tensorflow:tensorflow_py",
+        "//tensorflow/python:platform",
     ],
 )
 
@@ -51,7 +55,8 @@ py_binary(
     srcs_version = "PY2AND3",
     deps = [
         ":run_and_gather_logs_lib",
-        "//tensorflow:tensorflow_py",
+        "//tensorflow/python:client_testlib",
+        "//tensorflow/python:platform",
     ],
 )
 
@@ -80,7 +85,7 @@ tf_cc_logged_benchmark(
 
 tf_py_logged_benchmark(
     name = "rnn_op_benchmark",
-    target = "//tensorflow/python:rnn_test",
+    target = "//tensorflow/python/kernel_tests:rnn_test",
 )
 
 filegroup(
@@ -101,4 +106,5 @@ py_test(
     srcs = ["check_futures_test.py"],
     data = ["//tensorflow:all_opensource_files"],
     srcs_version = "PY2AND3",
+    deps = ["@six_archive//:six"],
 )

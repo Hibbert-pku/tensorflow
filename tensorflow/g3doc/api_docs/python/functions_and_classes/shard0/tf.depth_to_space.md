@@ -10,7 +10,7 @@ The attr `block_size` indicates the input block size and how the data is moved.
 
   * Chunks of data of size `block_size * block_size` from depth are rearranged
     into non-overlapping blocks of size `block_size x block_size`
-  * The width the output tensor is `input_depth * block_size`, whereas the
+  * The width the output tensor is `input_width * block_size`, whereas the
     height is `input_height * block_size`.
   * The depth of the input tensor must be divisible by
     `block_size * block_size`.
@@ -85,7 +85,7 @@ x = [[ [1],   [2],  [5],  [6]],
 
 
 *  <b>`input`</b>: A `Tensor`.
-*  <b>`block_size`</b>: An `int`.
+*  <b>`block_size`</b>: An `int` that is `>= 2`.
     The size of the spatial block, same as in Space2Depth.
 *  <b>`name`</b>: A name for the operation (optional).
 
