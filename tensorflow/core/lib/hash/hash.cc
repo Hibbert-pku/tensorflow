@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -124,6 +124,17 @@ uint64 Hash64(const char* data, size_t n, uint64 seed) {
   h ^= h >> r;
 
   return h;
+}
+
+bool SerializeToStringDeterministic(const protobuf::MessageLite& msg,
+                                    string* result) {
+  const size_t size = msg.ByteSizeLong();
+  *result = string(size, '\0');
+  protobuf::io::ArrayOutputStream array_stream(&(*result)[0], size);
+  protobuf::io::CodedOutputStream output_stream(&array_stream);
+  output_stream.SetSerializationDeterministic(true);
+  msg.SerializeWithCachedSizes(&output_stream);
+  return !output_stream.HadError() && size == output_stream.ByteCount();
 }
 
 }  // namespace tensorflow

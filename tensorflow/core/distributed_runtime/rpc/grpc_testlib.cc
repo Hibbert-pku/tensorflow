@@ -1,4 +1,4 @@
-/* Copyright 2016 Google Inc. All Rights Reserved.
+/* Copyright 2016 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ Status TestCluster::MakeTestCluster(const SessionOptions& options, int n,
   std::unique_ptr<GrpcSession> session;
   TF_RETURN_IF_ERROR(GrpcSession::Create(options_copy, &session));
   std::vector<DeviceAttributes> device_attributes;
-  ret->devices_ = session->ListDevices();
+  TF_RETURN_IF_ERROR(session->ListDevices(&ret->devices_));
 
   *out_cluster = std::move(ret);
   return Status::OK();

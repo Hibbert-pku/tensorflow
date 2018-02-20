@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,6 +26,10 @@ limitations under the License.
 #include "tensorflow/core/lib/strings/numbers.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow/core/platform/types.h"
+
+namespace Eigen {
+struct half;
+}
 
 // The AlphaNum type was designed to be used as the parameter type for StrCat().
 // Any routine accepting either a string or a number may accept it.
@@ -115,10 +119,14 @@ class AlphaNum {
 
   AlphaNum(float f)  // NOLINT(runtime/explicit)
       : piece_(digits_, strlen(FloatToBuffer(f, digits_))) {}
+  AlphaNum(bfloat16 f)  // NOLINT(runtime/explicit)
+      : piece_(digits_, strlen(FloatToBuffer(static_cast<float>(f), digits_))) {
+  }
   AlphaNum(double f)  // NOLINT(runtime/explicit)
       : piece_(digits_, strlen(DoubleToBuffer(f, digits_))) {}
 
-  AlphaNum(Hex hex);  // NOLINT(runtime/explicit)
+  AlphaNum(const Eigen::half &f);  // NOLINT(runtime/explicit)
+  AlphaNum(Hex hex);               // NOLINT(runtime/explicit)
 
   AlphaNum(const char *c_str) : piece_(c_str) {}   // NOLINT(runtime/explicit)
   AlphaNum(const StringPiece &pc) : piece_(pc) {}  // NOLINT(runtime/explicit)
@@ -138,8 +146,6 @@ class AlphaNum {
 
   TF_DISALLOW_COPY_AND_ASSIGN(AlphaNum);
 };
-
-extern AlphaNum gEmptyAlphaNum;
 
 // ----------------------------------------------------------------------
 // StrCat()

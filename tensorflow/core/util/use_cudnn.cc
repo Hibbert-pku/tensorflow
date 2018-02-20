@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,29 +15,47 @@ limitations under the License.
 
 #include "tensorflow/core/util/use_cudnn.h"
 
-#include <stdlib.h>
-
 #include "tensorflow/core/lib/core/stringpiece.h"
+#include "tensorflow/core/lib/strings/str_util.h"
 #include "tensorflow/core/platform/types.h"
+#include "tensorflow/core/util/env_var.h"
 
 namespace tensorflow {
 
-static bool ReadBoolFromEnvVar(const char* env_var_name, bool default_val) {
-  const char* tf_env_var_val = getenv(env_var_name);
-  if (tf_env_var_val != nullptr) {
-    StringPiece tf_env_var_val_str(tf_env_var_val);
-    if (tf_env_var_val_str == "0") {
-      return false;
-    }
-    return true;
+#define ADD_CUDNN_FLAG(func_name, flag_name, default_value)                \
+  bool func_name() {                                                       \
+    bool value;                                                            \
+    Status status = ReadBoolFromEnvVar(#flag_name, default_value, &value); \
+    if (!status.ok()) {                                                    \
+      LOG(ERROR) << status;                                                \
+    }                                                                      \
+    return value;                                                          \
   }
-  return default_val;
-}
 
-bool CanUseCudnn() { return ReadBoolFromEnvVar("TF_USE_CUDNN", true); }
+ADD_CUDNN_FLAG(CanUseCudnn, TF_USE_CUDNN, true);
+ADD_CUDNN_FLAG(CudnnUseAutotune, TF_CUDNN_USE_AUTOTUNE, true);
+ADD_CUDNN_FLAG(CudnnDisableConv1x1Optimization,
+               TF_CUDNN_DISABLE_CONV_1X1_OPTIMIZATION, false);
 
-bool CudnnUseAutotune() {
-  return ReadBoolFromEnvVar("TF_CUDNN_USE_AUTOTUNE", true);
+#undef ADD_CUDNN_FLAG
+
+FP16ConvMode CudnnConvComputeMode() {
+  string value;
+  Status status = ReadStringFromEnvVar("TF_FP16_CONV_MODE", "accurate", &value);
+  if (!status.ok()) {
+    LOG(ERROR) << status;
+  }
+  string lowercase_value = str_util::Lowercase(value);
+  if (lowercase_value == "accurate") {
+    return FP16ConvMode::kAccurate;
+  } else if (lowercase_value == "fast") {
+    return FP16ConvMode::kFast;
+  } else {
+    LOG(ERROR) << "FP16ConvMode only supports two modes, ACCURATE and FAST. "
+                  "Got unknown mode: "
+               << value;
+  }
+  return FP16ConvMode::kAccurate;
 }
 
 }  // namespace tensorflow

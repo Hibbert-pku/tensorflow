@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2015 Google Inc. All Rights Reserved.
+# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@
 #                  directory as this script will be used.
 #
 # COMMAND: Command to be executed in the docker container, e.g.,
-#          tensorflow/tools/ci_build/builds/pip.sh gpu
+#          tensorflow/tools/ci_build/builds/pip.sh gpu -c opt --config=cuda
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/builds/builds_common.sh"
@@ -67,19 +67,22 @@ if [ "$#" -lt 1 ] || [ ! -e "${SCRIPT_DIR}/Dockerfile.${CONTAINER_TYPE}" ]; then
   exit 1
 fi
 
-
 # Optional arguments - environment variables. For example:
 # CI_DOCKER_EXTRA_PARAMS='-it --rm' CI_COMMAND_PREFIX='' tensorflow/tools/ci_build/ci_build.sh CPU /bin/bash
-if [[ "${CI_DOCKER_EXTRA_PARAMS}" != *"--rm"* ]]; then
-  CI_DOCKER_EXTRA_PARAMS="--rm ${CI_DOCKER_EXTRA_PARAMS}"
-fi
 CI_TENSORFLOW_SUBMODULE_PATH="${CI_TENSORFLOW_SUBMODULE_PATH:-.}"
 CI_COMMAND_PREFIX=("${CI_COMMAND_PREFIX[@]:-${CI_TENSORFLOW_SUBMODULE_PATH}/tensorflow/tools/ci_build/builds/with_the_same_user "\
 "${CI_TENSORFLOW_SUBMODULE_PATH}/tensorflow/tools/ci_build/builds/configured ${CONTAINER_TYPE}}")
 
-if [[ ! -z "${TF_BUILD_DISABLE_GCP}" ]] &&
-   [[ "${TF_BUILD_DISABLE_GCP}" != "0" ]]; then
-  CI_COMMAND_PREFIX+=("--disable-gcp")
+# cmake (CPU) builds do not require configuration.
+if [[ "${CONTAINER_TYPE}" == "cmake" ]]; then
+  CI_COMMAND_PREFIX=("")
+fi
+
+# Use nvidia-docker if the container is GPU.
+if [[ "${CONTAINER_TYPE}" == "gpu" ]]; then
+  DOCKER_BINARY="nvidia-docker"
+else
+  DOCKER_BINARY="docker"
 fi
 
 # Helper function to traverse directories up until given file is found.
@@ -94,17 +97,9 @@ function upsearch () {
 WORKSPACE="${WORKSPACE:-$(upsearch WORKSPACE)}"
 BUILD_TAG="${BUILD_TAG:-tf_ci}"
 
-
 # Add extra params for cuda devices and libraries for GPU container.
-if [ "${CONTAINER_TYPE}" == "gpu" ]; then
-  devices=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-  libs=$(\ls /usr/lib/x86_64-linux-gnu/libcuda.* | xargs -I{} echo '-v {}:{}')
-  GPU_EXTRA_PARAMS="${devices} ${libs}"
-
-  # GPU pip tests-on-install should avoid using concurrent jobs due to GPU
-  # resource contention
-  GPU_EXTRA_PARAMS="${GPU_EXTRA_PARAMS} -e TF_BUILD_SERIAL_INSTALL_TESTS=1"
-else
+# And clear them if we are not building for GPU.
+if [[ "${CONTAINER_TYPE}" != "gpu" ]]; then
   GPU_EXTRA_PARAMS=""
 fi
 
@@ -119,10 +114,10 @@ DOCKER_IMG_NAME=$(echo "${DOCKER_IMG_NAME}" | sed -e 's/=/_/g' -e 's/,/-/g')
 DOCKER_IMG_NAME=$(echo "${DOCKER_IMG_NAME}" | tr '[:upper:]' '[:lower:]')
 
 # Print arguments.
-echo "WORKSAPCE: ${WORKSPACE}"
-echo "CI_DOCKER_EXTRA_PARAMS: ${CI_DOCKER_EXTRA_PARAMS[@]}"
-echo "COMMAND: ${COMMAND[@]}"
-echo "CI_COMMAND_PREFIX: ${CI_COMMAND_PREFIX[@]}"
+echo "WORKSPACE: ${WORKSPACE}"
+echo "CI_DOCKER_EXTRA_PARAMS: ${CI_DOCKER_EXTRA_PARAMS[*]}"
+echo "COMMAND: ${COMMAND[*]}"
+echo "CI_COMMAND_PREFIX: ${CI_COMMAND_PREFIX[*]}"
 echo "CONTAINER_TYPE: ${CONTAINER_TYPE}"
 echo "BUILD_TAG: ${BUILD_TAG}"
 echo "  (docker container name will be ${DOCKER_IMG_NAME})"
@@ -140,14 +135,17 @@ if [[ $? != "0" ]]; then
 fi
 
 # Run the command inside the container.
-echo "Running '${COMMAND[@]}' inside ${DOCKER_IMG_NAME}..."
+echo "Running '${COMMAND[*]}' inside ${DOCKER_IMG_NAME}..."
 mkdir -p ${WORKSPACE}/bazel-ci_build-cache
-docker run \
+# By default we cleanup - remove the container once it finish running (--rm)
+# and share the PID namespace (--pid=host) so the process inside does not have
+# pid 1 and SIGKILL is propagated to the process inside (jenkins can kill it).
+${DOCKER_BINARY} run --rm --pid=host \
     -v ${WORKSPACE}/bazel-ci_build-cache:${WORKSPACE}/bazel-ci_build-cache \
     -e "CI_BUILD_HOME=${WORKSPACE}/bazel-ci_build-cache" \
-    -e "CI_BUILD_USER=$(id -u --name)" \
+    -e "CI_BUILD_USER=$(id -u -n)" \
     -e "CI_BUILD_UID=$(id -u)" \
-    -e "CI_BUILD_GROUP=$(id -g --name)" \
+    -e "CI_BUILD_GROUP=$(id -g -n)" \
     -e "CI_BUILD_GID=$(id -g)" \
     -e "CI_TENSORFLOW_SUBMODULE_PATH=${CI_TENSORFLOW_SUBMODULE_PATH}" \
     -v ${WORKSPACE}:/workspace \

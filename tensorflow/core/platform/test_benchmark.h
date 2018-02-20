@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -54,12 +54,13 @@ class Benchmark {
   Benchmark* Arg(int x);
   Benchmark* ArgPair(int x, int y);
   Benchmark* Range(int lo, int hi);
+  Benchmark* RangePair(int lo1, int hi1, int lo2, int hi2);
   static void Run(const char* pattern);
 
  private:
   string name_;
   int num_args_;
-  std::vector<std::pair<int, int>> args_;
+  std::vector<std::pair<int, int> > args_;
   void (*fn0_)(int) = nullptr;
   void (*fn1_)(int, int) = nullptr;
   void (*fn2_)(int, int, int) = nullptr;

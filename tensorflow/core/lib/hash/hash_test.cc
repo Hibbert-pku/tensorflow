@@ -1,4 +1,4 @@
-/* Copyright 2015 Google Inc. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -63,6 +63,11 @@ TEST(Hash, SignedUnsignedIssue) {
       EXPECT_EQ(c.hash64, Hash64(&input[align], c.size, c.seed));
     }
   }
+}
+
+TEST(Hash, HashPtrIsNotIdentityFunction) {
+  int* ptr = reinterpret_cast<int*>(0xcafe0000);
+  EXPECT_NE(hash<int*>()(ptr), size_t{0xcafe0000});
 }
 
 static void BM_Hash32(int iters, int len) {
